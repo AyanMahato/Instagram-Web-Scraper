@@ -11,19 +11,20 @@ load_dotenv(".env")
 class Comment(BaseModel):
     author_username: str
     comment_text: str
-    timestamp: datetime.datetime
+    timestamp: Optional[datetime.datetime]
 
 class Post(BaseModel):
-    post_url: str
-    author_username: str
+    post_url: Optional[str]
+    author_username: Optional[str]
     author_follower_count: int
-    post_content: str
-    timestamp: datetime.datetime
+    post_content: Optional[str]
+    timestamp: Optional[datetime.datetime]
     like_count: int
     comment_count: int
     view_count: Optional[int] = None
-    media_urls: List[str]
-    comments: List[Comment] = []
+    media_urls: List[str] = Field(default_factory=list)
+    image_urls: List[str] = Field(default_factory=list)
+    comments: List[Comment] = Field(default_factory=list)
 
 class Profile(BaseModel):
     username: str
@@ -106,7 +107,7 @@ class InstagramScraperNode:
         for item in data:
             if self.params.search_type == "User Profile":
                 profile = Profile(
-                    username=item['username'],
+                    username=item.get('username', ''),
                     follower_count=item.get('followers', 0),
                     following_count=item.get('following', 0),
                     post_count=item.get('postsCount', 0),
@@ -122,24 +123,37 @@ class InstagramScraperNode:
 
         return {"instagram_results": results}
 
-    def _parse_post(self, post):
+    def _parse_post(self, post: dict) -> Post:
         comments = []
         for c in post.get('comments', [])[:self.params.comments_per_post_limit]:
+            comment_timestamp = None
+            if isinstance(c.get('timestamp'), str):
+                try:
+                    comment_timestamp = datetime.datetime.fromisoformat(c['timestamp'])
+                except ValueError:
+                    pass
             comments.append(Comment(
                 author_username=c.get('ownerUsername', 'unknown'),
                 comment_text=c.get('text', ''),
-                timestamp=datetime.datetime.fromisoformat(c.get('timestamp'))
+                timestamp=comment_timestamp
             ))
+
+        post_timestamp = None
+        if isinstance(post.get('timestamp'), str):
+            try:
+                post_timestamp = datetime.datetime.fromisoformat(post['timestamp'])
+            except ValueError:
+                pass
 
         return Post(
             post_url=post.get('url'),
-            author_username=post.get('ownerUsername'),
+            author_username=post.get('ownerUsername') or post.get('username'),
             author_follower_count=post.get('ownerFollowers', 0),
             post_content=post.get('caption', ''),
-            timestamp=datetime.datetime.fromisoformat(post.get('timestamp')),
+            timestamp=post_timestamp,
             like_count=post.get('likesCount', 0),
             comment_count=post.get('commentsCount', 0),
-            view_count=post.get('videoViewCount'),
-            media_urls=post.get('imageUrls', []),
+            image_urls=post.get('imageUrls', []),
+            media_urls=post.get('mediaUrls', post.get('imageUrls', [])),
             comments=comments
         )
