@@ -95,3 +95,10 @@ I believe we need to change `search_type_map = {"Hashtag": "hashtag", "User Prof
 5. Also when scraping for profiles it is never getting the exact profile name I am looking for - e.g., if I input "espn" it is scraping "espnnl", not sure if this is API issue or something to fix in the code itself
 
 6. Small note: any reason to not use the `apify-client` python package and instead use requests?
+
+
+# Answers
+
+- For Query 1-5 is resolved as the code for the payload has been fixed
+
+- 6. `apify-client` python package does not have flexibility over the vast endpoints of apify that can be used and is fixated to just getting the dataset. Requests is faster as it gets the data in just one-shot api call but `apify-client` python package does it in 2 steps- run the actor and then get dataset.
